@@ -87,5 +87,65 @@ def delete_item(item_id):
     save_data(data)
     return '', 204
 
+@app.route('/items/filter', methods=['GET'])
+def filter_items():
+    # Получаем параметры из URL
+    min_price_str = request.args.get('min_price')
+    max_price_str = request.args.get('max_price')
+    search_term = request.args.get('search')
+    
+    # Преобразуем строки в числа и проверяем их корректность
+    min_price = None
+    max_price = None
+    
+    if min_price_str:
+        try:
+            min_price = float(min_price_str)
+            if min_price < 0:
+                return jsonify({'error': 'min_price должно быть неотрицательным числом.'}), 400
+        except ValueError:
+            return jsonify({'error': 'min_price должен быть числом'}), 400
+        
+    if max_price_str:
+        try:
+            max_price = float(max_price_str)
+            if max_price < 0:
+                return jsonify({'error': 'max_price должно быть неотрицательным числом.'}), 400
+        except ValueError:
+            return jsonify({'error': 'max_price должен быть числом'}), 400
+        
+    # Загружаем все данные
+    all_items = load_data()
+    
+    # Создаём пустой список для отфильтрованных элементов
+    filtered_items = []
+    
+    # Проходим по всем элементам и проверяем каждый на соответствие условиям
+    for item in all_items:
+        price = item.get('price', 0)
+        name_lower = item.get('name', '').lower()
+        desc_lower = item.get('description', '').lower()
+        
+        # Проверяем условие по минимальной цене
+        if min_price is not None and price < min_price:
+            continue
+        
+        # Проверяем условие по максимальной цене
+        if max_price is not None and price < max_price:
+            continue
+        
+        if search_term:
+            search_lower = search_term.lower()
+            if search_lower not in name_lower and search_lower not in desc_lower:
+                continue
+            
+        # Если все условия прошли, добавляем элемент в результат
+        filtered_items.append(item)
+        
+    # Возвращаем отфильтрованный список с кодом 200 ОК
+    return jsonify(filtered_items), 200
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
